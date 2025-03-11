@@ -2,6 +2,12 @@ library(ampliSeqR)
 
 # Example workflow for 16S amplicon sequencing analysis
 
+# Hardware detection and optimization
+hw_profile <- detectHardware()
+backend <- configureParallelBackend(hw_profile)
+cat("\nHardware detection complete. Configured optimal parallel backend.\n")
+cat("Recommended threads for processing:", hw_profile$optimal_threads, "\n\n")
+
 # 1. Detect and validate FASTQ files
 # Replace with your actual FASTQ directory
 # fastq_files <- detectFastqFiles("path/to/fastq/dir", paired = TRUE)
@@ -56,7 +62,7 @@ print(paste0("Retention: ", round(sum(mock_filtered_files$forward_reads_out)/sum
 #   nbases = 1e8,
 #   min_length = 240,  # Adjust based on your amplicon size
 #   max_length = 260,  # Adjust based on your amplicon size
-#   multithread = TRUE
+#   multithread = hw_profile$optimal_threads  # Use optimized thread count from hardware detection
 # )
 
 cat("\nASV processing steps that would be performed with real data:\n")

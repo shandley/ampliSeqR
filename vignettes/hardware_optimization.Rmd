@@ -1,0 +1,264 @@
+---
+title: "Hardware Detection and Parallel Processing with ampliSeqR"
+author: "ampliSeqR Team"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Hardware Detection and Parallel Processing with ampliSeqR}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE  # Set to FALSE to prevent execution during package checks
+)
+```
+
+# Hardware Detection and Parallel Processing with ampliSeqR
+
+This vignette demonstrates how to use the hardware detection module in ampliSeqR
+to optimize performance through parallel processing.
+
+## Load Required Packages
+
+```{r setup}
+library(ampliSeqR)
+library(BiocParallel)  # Optional but recommended
+library(future)        # Optional but recommended
+library(dplyr)
+```
+
+## 1. Hardware Detection
+
+The first step is to detect available hardware resources using the `detectHardware()` function.
+This will analyze your system and determine the optimal configuration for parallel processing.
+
+```{r hardware-detection}
+# Detect available hardware
+hw_profile <- detectHardware(verbose = TRUE)
+
+# Display key hardware information
+cat("\nKey hardware information:\n")
+cat("- CPU cores (physical):", hw_profile$cpu_cores, "\n")
+cat("- CPU cores (logical):", hw_profile$logical_cores, "\n")
+cat("- Available memory:", round(hw_profile$free_memory, 1), "GB\n")
+cat("- GPU available:", ifelse(hw_profile$gpu_available, "Yes", "No"), "\n")
+cat("- Optimal threads:", hw_profile$optimal_threads, "\n")
+cat("- Recommended backend:", hw_profile$recommended_backend, "\n")
+```
+
+## 2. Configure Parallel Backend
+
+Next, we'll configure a parallel backend based on the detected hardware.
+The function `configureParallelBackend()` will set up the most appropriate
+parallelization strategy for your system.
+
+```{r configure-backend}
+# Configure parallel backend based on hardware profile
+backend <- configureParallelBackend(
+  hw_profile,
+  strategy = "auto",       # Can be "auto", "multicore", "multisession", or "gpu"
+  memory_limit = NULL      # Auto-determines a safe memory limit
+)
+
+# Print backend information
+cat("\nConfigured parallel backend:\n")
+if (inherits(backend, "BiocParallelParam")) {
+  cat("- Type: BiocParallel", class(backend)[1], "\n")
+  cat("- Workers:", BiocParallel::bpworkers(backend), "\n")
+} else if (is.list(backend) && "type" %in% names(backend)) {
+  cat("- Type:", backend$type, "\n")
+  cat("- Workers:", backend$workers, "\n")
+} else {
+  cat("- Custom backend configuration\n")
+}
+```
+
+## 3. Using the Backend with ampliSeqR Functions
+
+Now we'll demonstrate how to use the configured backend with 
+key ampliSeqR functions. Here we use a simple example dataset.
+
+```{r detect-fastq}
+# In a real analysis, you would point to your actual FASTQ files
+fastq_dir <- "/path/to/your/fastq/files"
+fastq_files <- detectFastqFiles(fastq_dir, paired = TRUE)
+```
+
+```{r demo-fastq-data}
+# For demonstration, we'll create a mock dataset
+# Replace this with your actual file detection code in real analyses
+fastq_files <- tibble::tibble(
+  sample_name = paste0("Sample", 1:4),
+  forward = file.path("/path/to/fastq", paste0("Sample", 1:4, "_R1.fastq.gz")),
+  reverse = file.path("/path/to/fastq", paste0("Sample", 1:4, "_R2.fastq.gz"))
+)
+```
+
+### Quality Analysis with Parallel Processing
+
+We can analyze read quality profiles in parallel to speed up processing.
+
+```{r quality-analysis}
+# In a real analysis with actual files, you would run:
+quality_stats <- calculateQualityStats(
+  fastq_files, 
+  n_reads = 1e6,
+  multithread = hw_profile$optimal_threads  # Use optimal thread count
+)
+
+quality_summary <- summarizeQualityStats(quality_stats)
+plotQualityProfiles(quality_stats)
+```
+
+### Filtering and Trimming with Parallelization
+
+The filtering step can be significantly accelerated using parallel processing.
+
+```{r filtering}
+# Filter and trim reads using the optimal thread count
+filtered_files <- filterAndTrimReads(
+  fastq_files,
+  output_dir = "filtered",
+  truncLen = c(240, 200),
+  maxEE = c(2, 2),
+  truncQ = 2,
+  maxN = 0,
+  rm.phix = TRUE,
+  compress = TRUE,
+  multithread = hw_profile$optimal_threads  # Use optimal thread count
+)
+```
+
+## 4. Memory-Aware Processing for Large Datasets
+
+For large datasets, we can use the hardware profile to estimate memory requirements
+and adjust batch processing accordingly.
+
+```{r memory-aware}
+# Estimate memory requirements for error learning task
+error_learning_memory <- estimateMemoryPerTask(
+  task_type = "error_learning",
+  read_size = 1e9  # Adjust based on your dataset size
+)
+
+cat("Estimated memory for error learning:", error_learning_memory, "GB\n")
+
+# Adjust number of threads if needed based on memory constraints
+if (error_learning_memory * hw_profile$optimal_threads > hw_profile$free_memory * 0.8) {
+  # Reduce thread count to avoid memory issues
+  adjusted_threads <- max(1, floor((hw_profile$free_memory * 0.8) / error_learning_memory))
+  cat("Reducing threads from", hw_profile$optimal_threads, "to", adjusted_threads, 
+      "to prevent memory issues\n")
+  thread_count <- adjusted_threads
+} else {
+  thread_count <- hw_profile$optimal_threads
+}
+```
+
+## 5. Running the Complete DADA2 Pipeline with Optimized Settings
+
+Finally, we can run the complete DADA2 pipeline with our optimized parallel settings.
+
+```{r dada2-pipeline}
+# Run the complete DADA2 pipeline with hardware optimization
+results <- runDADA2Pipeline(
+  filtered_files,
+  n_reads = 1e8,
+  pool = FALSE,
+  min_length = 240,
+  max_length = 260,
+  remove_chimeras = TRUE,
+  multithread = thread_count,  # Use optimized thread count
+  verbose = TRUE,
+  paired = TRUE
+)
+```
+
+## 6. Releasing Resources When Done
+
+It's good practice to clean up parallel backends when you're done with them.
+
+```{r cleanup}
+# Clean up BiocParallel resources if used
+if (inherits(backend, "BiocParallelParam")) {
+  BiocParallel::bpstop(backend)
+}
+
+# Reset future plan if used
+if (requireNamespace("future", quietly = TRUE)) {
+  future::plan(future::sequential)
+}
+
+# Force garbage collection to free memory
+gc()
+```
+
+## 7. Performance Monitoring and Benchmarking
+
+To evaluate the performance benefits of hardware optimization, 
+we can benchmark key operations.
+
+```{r benchmark}
+# Simple benchmarking function
+benchmark_operation <- function(operation, ..., threads = c(1, 2, 4, hw_profile$optimal_threads)) {
+  results <- list()
+  
+  for (n_threads in threads) {
+    cat("Benchmarking with", n_threads, "threads...\n")
+    start_time <- Sys.time()
+    
+    # Run the operation with specified number of threads
+    result <- operation(..., multithread = n_threads)
+    
+    end_time <- Sys.time()
+    elapsed <- difftime(end_time, start_time, units = "secs")
+    
+    results[[as.character(n_threads)]] <- list(
+      threads = n_threads,
+      time = as.numeric(elapsed),
+      result = result
+    )
+  }
+  
+  # Compare results
+  times <- sapply(results, function(x) x$time)
+  speedups <- times[1] / times
+  
+  cat("\nBenchmark results:\n")
+  for (i in seq_along(threads)) {
+    cat(sprintf("%d threads: %.2f seconds (%.2fx speedup)\n", 
+                threads[i], times[i], speedups[i]))
+  }
+  
+  invisible(results)
+}
+
+# Example: Benchmark error learning
+if (FALSE) {  # Set to TRUE to run the benchmark
+  benchmark_results <- benchmark_operation(
+    learnErrorRates,
+    filtered_files = filtered_files,
+    n_reads = 1e8,
+    n_iters = 12,
+    verbose = FALSE
+  )
+}
+```
+
+## Conclusion
+
+This vignette demonstrated how to:
+
+1. Detect hardware capabilities using `detectHardware()`
+2. Configure an appropriate parallel backend with `configureParallelBackend()`
+3. Use hardware-aware settings with ampliSeqR functions
+4. Manage memory constraints for large datasets
+5. Benchmark operations to quantify performance gains
+
+By leveraging these hardware optimization techniques, you can significantly
+reduce processing time for amplicon sequencing analysis, especially for
+large datasets.
