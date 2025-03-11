@@ -189,6 +189,155 @@ vignette("hardware_optimization", package = "ampliSeqR")
 
 The package leverages hardware acceleration through optimized parallel backends, DADA2's multithreading capabilities, and Rcpp integration for performance-critical operations.
 
+## Advanced File Detection
+
+ampliSeqR provides powerful file detection capabilities for various sequencing platforms and complex directory structures:
+
+```r
+library(ampliSeqR)
+library(dplyr)  # For data manipulation
+
+# Auto-detect platform with fuzzy matching (handles inconsistent naming)
+fastq_files <- detectFastqFilesAdvanced(
+  input_dir = "data/sequencing_run/",
+  paired = TRUE,                     # Look for paired-end files
+  recursive = TRUE,                  # Search in nested directories
+  platform = "auto",                 # Auto-detect the sequencing platform
+  fuzzy_threshold = 0.2,             # Allow fuzzy matching for filenames
+  confidence_threshold = 0.7,        # Confidence threshold for matches
+  extract_metadata = TRUE,           # Extract metadata from filenames
+  verify_content = TRUE              # Verify actual FASTQ content
+)
+
+# Handle PacBio data with custom patterns
+pacbio_files <- detectFastqFilesAdvanced(
+  input_dir = "data/pacbio/",
+  platform = "pacbio",
+  confidence_threshold = 0.6  # Lower threshold for ambiguous naming
+)
+
+# Custom patterns for unusual naming conventions
+custom_patterns <- list(
+  forward_patterns = c("_forward_", "_f_", "_read1_"),
+  reverse_patterns = c("_reverse_", "_r_", "_read2_"),
+  sample_patterns = c(
+    "(.+?)_forward_",
+    "(.+?)_reverse_",
+    "(.+?)_(f|r)_"
+  )
+)
+
+# Use custom patterns
+custom_files <- detectFastqFilesAdvanced(
+  input_dir = "data/custom_naming/",
+  paired = TRUE,
+  known_patterns = custom_patterns
+)
+
+# Extract and use metadata from filenames
+metadata_summary <- fastq_files %>%
+  mutate(
+    lane = sapply(metadata, function(x) ifelse(is.null(x$lane), NA, x$lane)),
+    date = sapply(metadata, function(x) ifelse(is.null(x$date), NA, x$date)),
+    flowcell = sapply(metadata, function(x) ifelse(is.null(x$flowcell), NA, x$flowcell))
+  ) %>%
+  select(sample_name, lane, date, flowcell, confidence)
+
+# Filter to high-confidence matches only
+high_confidence_pairs <- fastq_files %>% 
+  filter(confidence > 0.9) %>%
+  arrange(desc(confidence))
+
+# Multi-platform study example
+# Process each platform separately, then combine results
+platforms <- c("illumina", "pacbio", "nanopore")
+platform_results <- list()
+
+for (platform_name in platforms) {
+  # Detect files for this platform
+  platform_files <- detectFastqFilesAdvanced(
+    input_dir = paste0("data/", platform_name),
+    platform = platform_name,
+    recursive = TRUE
+  )
+  
+  # Store results for each platform
+  platform_results[[platform_name]] <- platform_files
+  
+  # Output some information about detected files
+  cat(sprintf("Detected %d samples from %s platform\n", 
+              nrow(platform_files), platform_name))
+}
+
+# Examine header formats from content verification
+illumina_headers <- unique(platform_results[["illumina"]]$forward_header)
+pacbio_headers <- unique(platform_results[["pacbio"]]$forward_header)
+```
+
+For more examples, see the included example script:
+
+```r
+file.edit(system.file("examples/advanced_file_detection.R", package = "ampliSeqR"))
+```
+
+### Integration with the Analysis Pipeline
+
+The advanced file detection can be seamlessly integrated with the rest of the ampliSeqR pipeline:
+
+```r
+library(ampliSeqR)
+
+# Use advanced file detection with a multi-batch study
+fastq_files <- detectFastqFilesAdvanced(
+  input_dir = "data/microbiome_study/",
+  recursive = TRUE,  # Search in all subdirectories
+  platform = "auto",  # Auto-detect the platform
+  extract_metadata = TRUE
+)
+
+# Extract batch information from directory structure
+fastq_files <- fastq_files %>%
+  mutate(
+    batch = basename(dirname(forward)),
+    sequencing_date = sapply(metadata, function(x) ifelse(is.null(x$date), NA, x$date))
+  )
+
+# Process each batch separately with appropriate parameters
+batches <- unique(fastq_files$batch)
+
+results_list <- list()
+for (batch_id in batches) {
+  message("Processing batch: ", batch_id)
+  
+  # Filter to current batch
+  batch_files <- fastq_files %>% filter(batch == batch_id)
+  
+  # Get optimal filtering parameters for this batch
+  truncLen <- if(grepl("illumina", tolower(batch_id))) c(240, 200) else c(200, 150)
+  
+  # Filter and trim
+  filtered_files <- filterAndTrimReads(
+    batch_files,
+    output_dir = file.path("filtered", batch_id),
+    truncLen = truncLen,
+    maxEE = c(2, 2)
+  )
+  
+  # Run DADA2 pipeline
+  batch_results <- runDADA2Pipeline(
+    filtered_files,
+    remove_chimeras = TRUE,
+    multithread = TRUE
+  )
+  
+  # Store results
+  results_list[[batch_id]] <- batch_results
+}
+
+# Combine results from all batches for downstream analysis
+combined_asv_table <- do.call(cbind, lapply(results_list, function(x) x$asv_table))
+```
+
 ## Documentation
 
 For detailed documentation on each function:
