@@ -51,7 +51,13 @@ print(paste0("Total reads out: ", sum(mock_filtered_files$forward_reads_out)))
 print(paste0("Retention: ", round(sum(mock_filtered_files$forward_reads_out)/sum(mock_filtered_files$forward_reads_in)*100, 1), "%"))
 
 # 3. Run DADA2 pipeline (with real files you would run:)
-# results <- runDADA2Pipeline(filtered_files)
+# results <- runDADA2Pipeline(
+#   filtered_files,
+#   nbases = 1e8,
+#   min_length = 240,  # Adjust based on your amplicon size
+#   max_length = 260,  # Adjust based on your amplicon size
+#   multithread = TRUE
+# )
 
 cat("\nASV processing steps that would be performed with real data:\n")
 cat("1. Learn error rates from filtered reads\n")

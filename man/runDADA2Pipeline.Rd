@@ -6,10 +6,10 @@
 \usage{
 runDADA2Pipeline(
   filtered_files,
-  n_reads = 1e+06,
+  n_reads = 1e+08,
   pool = FALSE,
-  min_length = 0,
-  max_length = Inf,
+  min_length = 240,
+  max_length = 260,
   remove_chimeras = TRUE,
   multithread = FALSE,
   verbose = TRUE,
@@ -19,13 +19,13 @@ runDADA2Pipeline(
 \arguments{
 \item{filtered_files}{Tibble with filtered file information as produced by filterAndTrimReads()}
 
-\item{n_reads}{Number of reads to use for error learning (default: 1e6)}
+\item{n_reads}{Number of bases to use for error learning (default: 1e8)}
 
 \item{pool}{Logical or character indicating whether to pool sequences (default: FALSE)}
 
-\item{min_length}{Minimum acceptable sequence length (default: 0)}
+\item{min_length}{Minimum acceptable sequence length (default: 240)}
 
-\item{max_length}{Maximum acceptable sequence length (default: Inf)}
+\item{max_length}{Maximum acceptable sequence length (default: 260)}
 
 \item{remove_chimeras}{Logical indicating whether to remove chimeras (default: TRUE)}
 

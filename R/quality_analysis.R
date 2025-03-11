@@ -33,7 +33,6 @@ calculateQualityStats <- function(fastq_files, n_reads = 10000, paired = TRUE) {
   
   # Function to calculate quality metrics for a file
   ._calculateFileQuality <- function(file_path, n_reads) {
-    message("Analyzing quality for: ", basename(file_path))
     
     tryCatch({
       # Use ShortRead for quality analysis
@@ -100,7 +99,6 @@ analyzeReadLengths <- function(fastq_files, n_reads = 10000, paired = TRUE) {
   
   # Function to analyze read lengths
   ._getReadLengths <- function(file_path, n_reads) {
-    message("Analyzing lengths for: ", basename(file_path))
     
     tryCatch({
       # Sample reads

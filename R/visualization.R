@@ -234,7 +234,8 @@ plotReadLengths <- function(length_data,
 #'
 #' @export
 #' @importFrom dplyr %>% arrange desc slice mutate
-#' @importFrom ggplot2 ggplot aes geom_point theme_bw scale_y_log10 labs
+#' @importFrom ggplot2 ggplot aes geom_point theme_bw scale_y_log10 labs scale_color_manual scale_size_manual element_text
+#' @importFrom ggrepel geom_text_repel
 #'
 #' @examples
 #' \dontrun{
@@ -292,83 +293,3 @@ plotASVAbundances <- function(asv_results, top_n = 10, log_scale = TRUE) {
   return(p)
 }
 
-#' Plot read counts by sample
-#'
-#' This function plots the number of reads in each sample at different processing stages.
-#'
-#' @param filtered_files Tibble with filtered file information as produced by filterAndTrimReads()
-#' @param asv_results ASV results as produced by generateASVTable() or runDADA2Pipeline()
-#'
-#' @return A ggplot object with read counts by sample
-#'
-#' @export
-#' @importFrom dplyr %>% select rename left_join arrange
-#' @importFrom tidyr pivot_longer
-#' @importFrom ggplot2 ggplot aes geom_col theme_bw facet_wrap labs scale_fill_brewer
-#'
-#' @examples
-#' \dontrun{
-#' fastq_files <- detectFastqFiles("path/to/fastq/dir")
-#' filtered_files <- filterAndTrimReads(fastq_files, "path/to/filtered/dir")
-#' results <- runDADA2Pipeline(filtered_files)
-#' plotReadCounts(filtered_files, results)
-#' }
-plotReadCounts <- function(filtered_files, asv_results) {
-  
-  # Input validation
-  if (nrow(filtered_files) == 0) {
-    stop("No filtered files provided")
-  }
-  
-  if (is.null(asv_results$sample_stats)) {
-    stop("Sample statistics not found in ASV results")
-  }
-  
-  # Prepare data for plotting
-  filtering_stats <- filtered_files %>%
-    select(sample_name, forward_reads_in, forward_reads_out) %>%
-    rename(
-      raw = forward_reads_in,
-      filtered = forward_reads_out
-    )
-  
-  # Get final ASV counts
-  asv_counts <- asv_results$sample_stats %>%
-    rename(
-      sample_name = sample,
-      asv = total_reads
-    )
-  
-  # Combine data
-  read_counts <- left_join(filtering_stats, asv_counts, by = "sample_name") %>%
-    arrange(desc(raw)) %>%
-    pivot_longer(
-      cols = c(raw, filtered, asv),
-      names_to = "stage",
-      values_to = "count"
-    ) %>%
-    mutate(
-      stage = factor(stage, levels = c("raw", "filtered", "asv"))
-    )
-  
-  # Create plot
-  p <- ggplot(read_counts, aes(x = sample_name, y = count, fill = stage)) +
-    geom_col(position = "dodge") +
-    labs(
-      x = "Sample",
-      y = "Read Count",
-      title = "Read Counts by Processing Stage",
-      fill = "Stage"
-    ) +
-    scale_fill_brewer(
-      palette = "Blues",
-      labels = c("Raw", "Filtered", "ASV Table")
-    ) +
-    theme_bw() +
-    theme(
-      axis.text.x = element_text(angle = 45, hjust = 1),
-      panel.grid.major.x = element_blank()
-    )
-  
-  return(p)
-}

@@ -18,8 +18,8 @@
 #'
 #' @export
 #' @importFrom dada2 filterAndTrim
-#' @importFrom dplyr %>% mutate bind_cols
-#' @importFrom tibble tibble
+#' @importFrom dplyr %>% mutate bind_cols filter select left_join rename
+#' @importFrom tibble tibble as_tibble
 #' @importFrom stringr str_replace
 #'
 #' @examples
@@ -80,8 +80,10 @@ filterAndTrimReads <- function(fastq_files,
       if (verbose) message("Filtering and trimming paired-end reads...")
       
       filter_stats <- filterAndTrim(
-        fwd = fwd_in, fwd.out = fwd_out,
-        rev = rev_in, rev.out = rev_out,
+        fwd = fwd_in, 
+        filt = fwd_out,
+        rev = rev_in, 
+        filt.rev = rev_out,
         truncLen = truncLen,
         maxEE = maxEE,
         truncQ = truncQ,
@@ -135,7 +137,8 @@ filterAndTrimReads <- function(fastq_files,
       if (verbose) message("Filtering and trimming single-end reads...")
       
       filter_stats <- filterAndTrim(
-        fwd = fwd_in, fwd.out = fwd_out,
+        fwd = fwd_in, 
+        filt = fwd_out,
         truncLen = truncLen[1],
         maxEE = maxEE[1],
         truncQ = truncQ,
@@ -189,7 +192,7 @@ filterAndTrimReads <- function(fastq_files,
 #' @return A tibble with filtering results for different parameter combinations
 #'
 #' @export
-#' @importFrom dplyr %>% group_by summarize
+#' @importFrom dplyr %>% group_by summarize arrange filter
 #' @importFrom purrr map_dfr
 #' @importFrom tibble tibble
 #'
@@ -238,9 +241,6 @@ optimizeFilteringParams <- function(fastq_files,
     if (!._createDirIfNotExists(param_dir)) {
       stop("Failed to create parameter directory: ", param_dir)
     }
-    
-    message("Testing parameters: truncLen = ", paste(truncLen, collapse = ", "), 
-            ", maxEE = ", paste(maxEE, collapse = ", "))
     
     # Run filtering with these parameters
     filter_results <- tryCatch({
@@ -305,9 +305,8 @@ optimizeFilteringParams <- function(fastq_files,
   
   combined_results <- bind_rows(all_results)
   
-  # Clean up temporary files if requested
-  # Uncomment to enable cleanup
-  # unlink(temp_dir, recursive = TRUE)
+  # Clean up temporary files
+  unlink(temp_dir, recursive = TRUE)
   
   # Sort by retention and return
   optimal_params <- combined_results %>%

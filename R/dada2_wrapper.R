@@ -4,7 +4,7 @@
 #' learnErrors function.
 #'
 #' @param filtered_files Tibble with filtered file information as produced by filterAndTrimReads()
-#' @param n_reads Number of reads to use for error learning (default: 1e6)
+#' @param n_reads Number of bases to use for error learning (default: 1e8)
 #' @param n_iters Number of iterations for error learning (default: 12)
 #' @param multithread Logical or Integer indicating number of threads to use (default: FALSE)
 #' @param verbose Logical indicating whether to print verbose output (default: TRUE)
@@ -23,7 +23,7 @@
 #' error_models <- learnErrors(filtered_files)
 #' }
 learnErrorRates <- function(filtered_files,
-                           n_reads = 1e6,
+                           n_reads = 1e8,
                            n_iters = 12,
                            multithread = FALSE,
                            verbose = TRUE,
@@ -43,7 +43,7 @@ learnErrorRates <- function(filtered_files,
   err_f <- tryCatch({
     learnErrors(filtered_files$filtered_forward, 
                multithread = multithread,
-               nreads = n_reads,
+               nbases = n_reads,
                MAX_CONSIST = n_iters,
                verbose = verbose)
   }, error = function(e) {
@@ -56,7 +56,7 @@ learnErrorRates <- function(filtered_files,
     err_r <- tryCatch({
       learnErrors(filtered_files$filtered_reverse, 
                  multithread = multithread,
-                 nreads = n_reads,
+                 nbases = n_reads,
                  MAX_CONSIST = n_iters,
                  verbose = verbose)
     }, error = function(e) {
@@ -210,13 +210,20 @@ generateASVTable <- function(dada_results,
   # Filter by sequence length
   if (min_length > 0 || max_length < Inf) {
     seq_lengths <- nchar(colnames(seqtab))
-    seqtab <- seqtab[, seq_lengths >= min_length & seq_lengths <= max_length]
+    filtered_seqs <- seq_lengths >= min_length & seq_lengths <= max_length
+    n_retained <- sum(filtered_seqs)
     
     if (verbose) {
       message("Filtered sequences by length (", min_length, "-", max_length, " bp): ",
-              sum(seq_lengths >= min_length & seq_lengths <= max_length), " of ", 
-              length(seq_lengths), " sequences retained")
+              n_retained, " of ", length(seq_lengths), " sequences retained")
     }
+    
+    # Stop if no sequences were retained
+    if (n_retained == 0) {
+      stop("No sequences remained after length filtering. Try adjusting min_length and max_length parameters to match your amplicon size.")
+    }
+    
+    seqtab <- seqtab[, filtered_seqs]
   }
   
   # Remove chimeras
@@ -261,6 +268,15 @@ generateASVTable <- function(dada_results,
     rel_abundance = abundance / total_reads
   )
   
+  # Extract simplified sample names (remove file extension if present)
+  sample_names <- rownames(seqtab_renamed)
+  # If the sample names include file extensions, clean them up
+  sample_names_clean <- gsub("_F_filtered\\.fastq\\.gz$", "", sample_names)
+  sample_names_clean <- gsub("_filtered\\.fastq\\.gz$", "", sample_names_clean)
+  sample_names_clean <- gsub("\\.fastq\\.gz$", "", sample_names_clean)
+  sample_names_clean <- gsub("\\.fastq$", "", sample_names_clean)
+  sample_names_clean <- basename(sample_names_clean)  # In case there are paths
+  
   # Return results
   if (verbose) {
     message("Final ASV table: ", nrow(seqtab_renamed), " samples x ", ncol(seqtab_renamed), " ASVs")
@@ -272,7 +288,8 @@ generateASVTable <- function(dada_results,
     asv_sequences = asv_sequences,
     asv_stats = asv_stats,
     sample_stats = tibble(
-      sample = rownames(seqtab_renamed),
+      sample = sample_names_clean,  # Use cleaned sample names
+      original_sample = sample_names,  # Keep original for reference
       total_reads = sample_reads
     )
   ))
@@ -283,10 +300,10 @@ generateASVTable <- function(dada_results,
 #' This function runs the complete DADA2 pipeline from filtered files to ASV table.
 #'
 #' @param filtered_files Tibble with filtered file information as produced by filterAndTrimReads()
-#' @param n_reads Number of reads to use for error learning (default: 1e6)
+#' @param n_reads Number of bases to use for error learning (default: 1e8)
 #' @param pool Logical or character indicating whether to pool sequences (default: FALSE)
-#' @param min_length Minimum acceptable sequence length (default: 0)
-#' @param max_length Maximum acceptable sequence length (default: Inf)
+#' @param min_length Minimum acceptable sequence length (default: 240)
+#' @param max_length Maximum acceptable sequence length (default: 260)
 #' @param remove_chimeras Logical indicating whether to remove chimeras (default: TRUE)
 #' @param multithread Logical or Integer indicating number of threads to use (default: FALSE)
 #' @param verbose Logical indicating whether to print verbose output (default: TRUE)
@@ -303,10 +320,10 @@ generateASVTable <- function(dada_results,
 #' results <- runDADA2Pipeline(filtered_files)
 #' }
 runDADA2Pipeline <- function(filtered_files,
-                            n_reads = 1e6,
+                            n_reads = 1e8,
                             pool = FALSE,
-                            min_length = 0,
-                            max_length = Inf,
+                            min_length = 240,
+                            max_length = 260,
                             remove_chimeras = TRUE,
                             multithread = FALSE,
                             verbose = TRUE,

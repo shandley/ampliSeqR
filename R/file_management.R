@@ -92,8 +92,7 @@ detectFastqFiles <- function(input_dir,
       arrange(sample_name)
   }
   
-  # Provide summary
-  message("Detected ", nrow(fastq_data), " samples")
+  # Return detected files (no message output)
   
   return(fastq_data)
 }

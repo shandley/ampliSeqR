@@ -28,8 +28,9 @@ BiocManager::install(c("dada2", "Biostrings", "ShortRead"))
 if (!requireNamespace("devtools", quietly = TRUE))
   install.packages("devtools")
 
-# Install from GitHub
-devtools::install_github("yourusername/ampliSeqR")
+# Install the package
+# Replace with your actual repository details when available
+devtools::install_github("username/ampliSeqR")
 ```
 
 ## Quick Start
@@ -82,10 +83,10 @@ filtered_files <- filterAndTrimReads(
 # Step 4: Run DADA2 pipeline (this performs the core analysis)
 results <- runDADA2Pipeline(
   filtered_files,
-  n_reads = 1e6,
+  nbases = 1e8,  # Number of bases to process
   pool = FALSE,
-  min_length = 380,  # Adjust based on your expected amplicon size
-  max_length = 430,
+  min_length = 240,  # Adjust based on your expected amplicon size
+  max_length = 260,
   remove_chimeras = TRUE,
   multithread = TRUE
 )
@@ -95,9 +96,7 @@ results <- runDADA2Pipeline(
 asv_plot <- plotASVAbundances(results, top_n = 15, log_scale = TRUE)
 print(asv_plot)
 
-# Plot read counts by sample at each processing stage
-read_plot <- plotReadCounts(filtered_files, results)
-print(read_plot)
+# Skip directly to saving results for downstream analysis
 
 # Step 6: Save results for downstream analysis
 # Save ASV table
@@ -146,5 +145,5 @@ This package is licensed under the MIT License - see the LICENSE file for detail
 If you use ampliSeqR in your research, please cite:
 
 ```
-Citation information will be available here.
+Developer, S. (2025). ampliSeqR: Accelerated 16S Amplicon Sequencing Analysis. R package version 0.1.0.
 ```

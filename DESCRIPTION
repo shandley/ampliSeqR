@@ -2,8 +2,8 @@ Package: ampliSeqR
 Title: Accelerated 16S Amplicon Sequencing Analysis
 Version: 0.1.0
 Authors@R: 
-    person("First", "Last", , "your.email@example.com", role = c("aut", "cre"),
-           comment = c(ORCID = "0000-0000-0000-0000"))
+    person("Scott", "Developer", , "scott@example.com", role = c("aut", "cre"),
+           comment = c(ORCID = ""))
 Description: A package for efficient analysis of 16S amplicon sequencing data with
     hardware acceleration. Provides functions for file organization, quality control,
     sequence processing, ASV table generation, and visualization of results.
@@ -27,7 +27,7 @@ Imports:
     Rcpp
 Suggests: 
     testthat (>= 3.0.0),
-    knitr,
+    knitr (>= 1.30),
     rmarkdown,
     phyloseq
 Config/testthat/edition: 3

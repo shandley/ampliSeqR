@@ -6,7 +6,7 @@
 \usage{
 learnErrorRates(
   filtered_files,
-  n_reads = 1e+06,
+  n_reads = 1e+08,
   n_iters = 12,
   multithread = FALSE,
   verbose = TRUE,
@@ -16,7 +16,7 @@ learnErrorRates(
 \arguments{
 \item{filtered_files}{Tibble with filtered file information as produced by filterAndTrimReads()}
 
-\item{n_reads}{Number of reads to use for error learning (default: 1e6)}
+\item{n_reads}{Number of bases to use for error learning (default: 1e8)}
 
 \item{n_iters}{Number of iterations for error learning (default: 12)}
 
