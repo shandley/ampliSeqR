@@ -24,6 +24,10 @@ if (!requireNamespace("BiocManager", quietly = TRUE))
 
 BiocManager::install(c("dada2", "Biostrings", "ShortRead"))
 
+# Install devtools if needed
+if (!requireNamespace("devtools", quietly = TRUE))
+  install.packages("devtools")
+
 # Install from GitHub
 devtools::install_github("yourusername/ampliSeqR")
 ```
@@ -32,35 +36,105 @@ devtools::install_github("yourusername/ampliSeqR")
 
 ```r
 library(ampliSeqR)
+library(ggplot2)  # For visualizations
 
-# Detect FASTQ files
-fastq_files <- detectFastqFiles("path/to/fastq/dir", paired = TRUE)
+# Step 1: Detect and validate FASTQ files
+fastq_dir <- "path/to/fastq/files"  # Replace with your actual path
+fastq_files <- detectFastqFiles(fastq_dir, paired = TRUE)
+validated_files <- validateFastqFiles(fastq_files)
 
-# Analyze quality
-quality_data <- calculateQualityStats(fastq_files)
-plotQualityProfiles(quality_data)
+# Step 2: Analyze quality
+quality_data <- calculateQualityStats(validated_files)
+# View quality profiles
+quality_plot <- plotQualityProfiles(quality_data)
+print(quality_plot)
 
-# Filter and trim reads
+# Analyze read lengths
+length_data <- analyzeReadLengths(validated_files)
+length_plot <- plotReadLengths(length_data)
+print(length_plot)
+
+# Step 3: Filter and trim reads
+# Create output directory for filtered files
+filtered_dir <- "path/to/filtered/files"  # Replace with your actual path
+dir.create(filtered_dir, showWarnings = FALSE, recursive = TRUE)
+
+# Optional: Optimize filtering parameters 
+# (you can skip this and use default parameters)
+truncLen_range <- list(c(240, 200), c(220, 180), c(200, 160))
+maxEE_range <- list(c(2, 2), c(2, 5), c(5, 5))
+opt_params <- optimizeFilteringParams(
+  validated_files, 
+  filtered_dir, 
+  truncLen_range = truncLen_range,
+  maxEE_range = maxEE_range,
+  sample_size = 2  # Use 2 samples for optimization
+)
+
+# Use optimal parameters or default ones
 filtered_files <- filterAndTrimReads(
-  fastq_files, 
-  "path/to/filtered/dir",
-  truncLen = c(240, 200),
+  validated_files, 
+  filtered_dir,
+  truncLen = c(240, 200),  # Adjust based on your data
   maxEE = c(2, 2)
 )
 
-# Run DADA2 pipeline
-results <- runDADA2Pipeline(filtered_files)
+# Step 4: Run DADA2 pipeline (this performs the core analysis)
+results <- runDADA2Pipeline(
+  filtered_files,
+  n_reads = 1e6,
+  pool = FALSE,
+  min_length = 380,  # Adjust based on your expected amplicon size
+  max_length = 430,
+  remove_chimeras = TRUE,
+  multithread = TRUE
+)
 
-# Visualize results
-plotASVAbundances(results)
+# Step 5: Visualize results
+# Plot ASV abundances
+asv_plot <- plotASVAbundances(results, top_n = 15, log_scale = TRUE)
+print(asv_plot)
+
+# Plot read counts by sample at each processing stage
+read_plot <- plotReadCounts(filtered_files, results)
+print(read_plot)
+
+# Step 6: Save results for downstream analysis
+# Save ASV table
+write.csv(results$asv_table, "asv_table.csv")
+
+# Save ASV sequences
+Biostrings::writeXStringSet(
+  results$asv_sequences, 
+  "asv_sequences.fasta"
+)
+
+# Save ASV statistics
+write.csv(results$asv_stats, "asv_stats.csv")
 ```
+
+## Complete Workflow Example
+
+For a more detailed example, see the included demo script:
+
+```r
+# From R console
+file.edit(system.file("demo_script.R", package = "ampliSeqR"))
+```
+
+## Hardware Acceleration
+
+The package leverages hardware acceleration through DADA2's multithreading capabilities and Rcpp integration for performance-critical operations. Use the `multithread` parameter when available to take advantage of multiple CPU cores.
 
 ## Documentation
 
-See the package vignettes for more detailed examples and workflows:
+For detailed documentation on each function:
 
 ```r
-browseVignettes("ampliSeqR")
+?detectFastqFiles
+?filterAndTrimReads
+?runDADA2Pipeline
+?plotQualityProfiles
 ```
 
 ## License
