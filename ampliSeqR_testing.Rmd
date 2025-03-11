@@ -1,0 +1,94 @@
+---
+title: "ampliSeqR - Testing"
+author: "Scott A. Handley"
+date: "2025-03-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(devtools)
+
+#install_local("/Users/scott/gdrive/code/R/ampliSeqR", force = TRUE)
+
+# In your package directory
+devtools::load_all("/Users/scott/gdrive/code/R/ampliSeqR")
+
+```
+
+```{r quick-start}
+library(ampliSeqR)
+library(ggplot2)  # For visualizations
+
+# Step 1: Detect and validate FASTQ files
+fastq_dir <- "./data"  # Replace with your actual path
+fastq_files <- detectFastqFiles(fastq_dir, paired = TRUE)
+validated_files <- validateFastqFiles(fastq_files)
+
+# Step 2: Analyze quality
+quality_data <- calculateQualityStats(validated_files)
+# View quality profiles
+quality_plot <- plotQualityProfiles(quality_data)
+print(quality_plot)
+
+# Analyze read lengths
+length_data <- analyzeReadLengths(validated_files)
+length_plot <- plotReadLengths(length_data)
+print(length_plot)
+
+# Step 3: Filter and trim reads
+# Create output directory for filtered files
+filtered_dir <- "./data/filtered"  # Replace with your actual path
+dir.create(filtered_dir, showWarnings = FALSE, recursive = TRUE)
+
+# Optional: Optimize filtering parameters
+# (you can skip this and use default parameters)
+truncLen_range <- list(c(240, 200), c(220, 180), c(200, 160))
+maxEE_range <- list(c(2, 2), c(2, 5), c(5, 5))
+opt_params <- optimizeFilteringParams(
+  validated_files,
+  filtered_dir,
+  truncLen_range = truncLen_range,
+  maxEE_range = maxEE_range,
+  sample_size = 2  # Use 2 samples for optimization
+)
+
+# Use optimal parameters or default ones
+filtered_files <- filterAndTrimReads(
+  validated_files,
+  filtered_dir,
+  truncLen = c(240, 200),  # Adjust based on your data
+  maxEE = c(2, 2)
+)
+
+# Step 4: Run DADA2 pipeline (this performs the core analysis)
+results <- runDADA2Pipeline(
+  filtered_files,
+  n_reads = 1e8,
+  pool = FALSE,
+  min_length = 240,  # Adjust based on your expected amplicon size
+  max_length = 260,
+  remove_chimeras = TRUE,
+  multithread = TRUE
+)
+
+# Step 5: Visualize results
+# Plot ASV abundances
+asv_plot <- plotASVAbundances(results, top_n = 15, log_scale = TRUE)
+print(asv_plot)
+
+# Skip directly to saving results for downstream analysis
+
+# Step 6: Save results for downstream analysis
+# Save ASV table
+write.csv(results$asv_table, "asv_table.csv")
+
+# Save ASV sequences
+Biostrings::writeXStringSet(
+  results$asv_sequences,
+  "asv_sequences.fasta"
+)
+
+# Save ASV statistics
+write.csv(results$asv_stats, "asv_stats.csv")
+
+```
