@@ -1,0 +1,35 @@
+Package: ampliSeqR
+Title: Accelerated 16S Amplicon Sequencing Analysis
+Version: 0.1.0
+Authors@R: 
+    person("First", "Last", , "your.email@example.com", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0000-0000-0000"))
+Description: A package for efficient analysis of 16S amplicon sequencing data with
+    hardware acceleration. Provides functions for file organization, quality control,
+    sequence processing, ASV table generation, and visualization of results.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.2.3
+Imports: 
+    dada2,
+    Biostrings,
+    ShortRead,
+    ggplot2,
+    dplyr,
+    tibble,
+    readr,
+    stringr,
+    purrr,
+    magrittr,
+    scales,
+    tidyr,
+    Rcpp
+Suggests: 
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown,
+    phyloseq
+Config/testthat/edition: 3
+VignetteBuilder: knitr
+LinkingTo: Rcpp
