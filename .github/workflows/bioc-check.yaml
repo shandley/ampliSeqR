@@ -1,0 +1,26 @@
+name: Bioconductor-check
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  build-and-check:
+    runs-on: ubuntu-latest
+    container: bioconductor/bioconductor_docker:latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Install dependencies
+        run: |
+          BiocManager::install(c("BiocCheck", "BiocStyle"))
+          remotes::install_deps(dependencies = TRUE)
+        shell: Rscript {0}
+      
+      - name: Check with BiocCheck
+        run: |
+          BiocCheck::BiocCheck(".")
+        shell: Rscript {0}

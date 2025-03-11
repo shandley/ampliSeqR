@@ -1,0 +1,23 @@
+{
+  "extends": [
+    "config:base"
+  ],
+  "packageRules": [
+    {
+      "matchManagers": ["regex"],
+      "matchFileNames": ["DESCRIPTION"],
+      "matchDepTypes": ["imports", "depends", "suggests", "enhances"],
+      "enabled": true
+    }
+  ],
+  "regexManagers": [
+    {
+      "fileMatch": ["^DESCRIPTION$"],
+      "matchStrings": [
+        "(?<depName>[a-zA-Z0-9.]+)(?:\\s+\\([^\\)]+\\))?(?<currentValue>[^,\\s]+)?"
+      ],
+      "datasourceTemplate": "cran",
+      "depTypeTemplate": "imports"
+    }
+  ]
+}
