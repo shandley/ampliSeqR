@@ -127,17 +127,63 @@ file.edit(system.file("demo_script.R", package = "ampliSeqR"))
 
 ## Hardware Acceleration
 
-The package leverages hardware acceleration through DADA2's multithreading capabilities and Rcpp integration for performance-critical operations. Use the `multithread` parameter when available to take advantage of multiple CPU cores.
+ampliSeqR provides automatic hardware detection and optimization to accelerate analyses across different computing environments:
+
+```r
+# Detect available hardware resources
+hw_profile <- detectHardware()
+print(hw_profile)
+
+# Configure parallel backend
+backend <- configureParallelBackend(hw_profile)
+
+# Use optimized thread count in analysis functions
+fastq_dir <- "path/to/fastq/files"  # Replace with your actual path
+fastq_files <- detectFastqFiles(fastq_dir, paired = TRUE)
+
+# Run filtering with optimal thread count
+filtered_files <- filterAndTrimReads(
+  fastq_files, 
+  output_dir = "filtered",
+  truncLen = c(240, 200),
+  maxEE = c(2, 2),
+  multithread = hw_profile$optimal_threads  # Use detected optimal thread count
+)
+
+# Memory-aware processing for large datasets
+error_memory <- estimateMemoryPerTask("error_learning", read_size = 1e9)
+thread_count <- min(hw_profile$optimal_threads, 
+                   floor(hw_profile$free_memory * 0.8 / error_memory))
+
+# Run DADA2 pipeline with optimized parameters
+results <- runDADA2Pipeline(
+  filtered_files,
+  min_length = 240,
+  max_length = 260,
+  multithread = thread_count  # Use memory-aware thread count
+)
+```
+
+For detailed examples on hardware optimization, see the hardware vignette:
+
+```r
+vignette("hardware_optimization", package = "ampliSeqR")
+```
+
+The package leverages hardware acceleration through optimized parallel backends, DADA2's multithreading capabilities, and Rcpp integration for performance-critical operations.
 
 ## Documentation
 
 For detailed documentation on each function:
 
 ```r
-?detectFastqFiles
-?filterAndTrimReads
-?runDADA2Pipeline
-?plotQualityProfiles
+?detectHardware           # Hardware detection and optimization
+?configureParallelBackend # Parallel backend configuration
+?estimateMemoryPerTask    # Memory requirement estimation
+?detectFastqFiles         # File detection and organization
+?filterAndTrimReads       # Read filtering and trimming
+?runDADA2Pipeline         # DADA2 pipeline wrapper
+?plotQualityProfiles      # Quality visualization
 ```
 
 ## License
