@@ -92,3 +92,39 @@ Biostrings::writeXStringSet(
 write.csv(results$asv_stats, "asv_stats.csv")
 
 ```
+
+```{r hardware-acceleration}
+# Detect available hardware resources
+hw_profile <- detectHardware()
+print(hw_profile)
+
+# Configure parallel backend
+backend <- configureParallelBackend(hw_profile)
+
+# Use optimized thread count in analysis functions
+fastq_dir <- "path/to/fastq/files"  # Replace with your actual path
+fastq_files <- detectFastqFiles(fastq_dir, paired = TRUE)
+
+# Run filtering with optimal thread count
+filtered_files <- filterAndTrimReads(
+  fastq_files, 
+  output_dir = "filtered",
+  truncLen = c(240, 200),
+  maxEE = c(2, 2),
+  multithread = hw_profile$optimal_threads  # Use detected optimal thread count
+)
+
+# Memory-aware processing for large datasets
+error_memory <- estimateMemoryPerTask("error_learning", read_size = 1e9)
+thread_count <- min(hw_profile$optimal_threads, 
+                   floor(hw_profile$free_memory * 0.8 / error_memory))
+
+# Run DADA2 pipeline with optimized parameters
+results <- runDADA2Pipeline(
+  filtered_files,
+  min_length = 240,
+  max_length = 260,
+  multithread = thread_count  # Use memory-aware thread count
+)
+
+```

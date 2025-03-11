@@ -12,7 +12,10 @@ ampliSeqR provides tools for analyzing 16S rRNA gene amplicon sequencing data, w
 
 ## Features
 
-- Automatic detection and organization of FASTQ files
+- Advanced file detection and organization with fuzzy matching capabilities
+- Support for multiple sequencing platforms (Illumina, PacBio, Nanopore, Ion Torrent)
+- Bayesian confidence scoring for file pairing
+- Directory structure analysis for multi-batch experiments
 - Quality control and visualization of sequencing data
 - Optimized filtering and trimming of sequences
 - Accelerated DADA2 implementation for error learning and sample inference
@@ -45,7 +48,21 @@ library(ggplot2)  # For visualizations
 
 # Step 1: Detect and validate FASTQ files
 fastq_dir <- "path/to/fastq/files"  # Replace with your actual path
+
+# Choose between standard or advanced file detection:
+# Standard detection for simple naming conventions:
 fastq_files <- detectFastqFiles(fastq_dir, paired = TRUE)
+
+# OR use advanced detection for complex file naming or multi-platform studies:
+fastq_files <- detectFastqFilesAdvanced(
+  fastq_dir, 
+  paired = TRUE,
+  platform = "auto",      # Auto-detect the sequencing platform
+  recursive = TRUE,       # Search in nested directories
+  fuzzy_threshold = 0.2,  # Allow fuzzy matching for filenames
+  extract_metadata = TRUE # Extract metadata from filenames
+)
+
 validated_files <- validateFastqFiles(fastq_files)
 
 # Step 2: Analyze quality
@@ -180,7 +197,8 @@ For detailed documentation on each function:
 ?detectHardware           # Hardware detection and optimization
 ?configureParallelBackend # Parallel backend configuration
 ?estimateMemoryPerTask    # Memory requirement estimation
-?detectFastqFiles         # File detection and organization
+?detectFastqFiles         # Basic file detection and organization
+?detectFastqFilesAdvanced # Advanced file detection with fuzzy matching
 ?filterAndTrimReads       # Read filtering and trimming
 ?runDADA2Pipeline         # DADA2 pipeline wrapper
 ?plotQualityProfiles      # Quality visualization
