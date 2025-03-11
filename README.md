@@ -1,3 +1,7 @@
+## 🚧 Under Construction 🚧
+
+This project is currently under active development. Some features may be incomplete or subject to change.
+
 # ampliSeqR
 
 An R package for efficient 16S amplicon sequencing analysis with hardware acceleration.
